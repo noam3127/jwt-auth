@@ -1,7 +1,8 @@
-var express = require('express');
-var User = require('../models/user');
-var jwt = require('jwt-simple');
-var router = express.Router();
+var express = require('express'),
+  User = require('../models/user'),
+  jwt = require('jwt-simple'),
+  moment = require('moment'),
+  router = express.Router();
 
 var authenticateUser = function(req, res, next) {
 	User.findOne({email: req.body.email}, function(err, user) {
@@ -9,7 +10,7 @@ var authenticateUser = function(req, res, next) {
 		if (!user) {
 			res.status(404).send('No user found with that email address');
 		}
-		user.comparePassword(req.body.password, user.password, function(err, isMatch) {
+		user.comparePassword(req.body.password, function(err, isMatch) {
 			if (err) return next(err);
 			if (!isMatch) {
 				res.status(403).send('Wrong password');
@@ -36,25 +37,37 @@ router.post('/signup', function(req, res, next) {
       return res.status(409).send('Email is already taken');
     }
     var user = new User(userData);
-    user.save(user, function(err, doc) {
-      if (err) return next(err);
-      res.sendStatus(201);
+
+    user.save(user, function(err) {
+      return next(err);
+    });
+
+    var expires = moment().add(7, 'days').valueOf();
+    var token = jwt.encode({
+      iss: user._id,
+      exp: expires
+    }, req.app.get('JWT_SECRET'));
+
+    res.status(201).json({
+      token: token,
+      expires: expires,
+      user: user._id
     });
   });
 
 });
 
-router.get('/login', authenticateUser, function(req, res, next) {
-	var expires = moment.add(7, 'days').valueOf();
+router.post('/login', authenticateUser, function(req, res, next) {
+	var expires = moment().add(7, 'days').valueOf();
 	var token = jwt.encode({
 		iss: req.user._id,
 		exp: expires
-	}, req.app.get('jwtTokenSecret'));
-
+	}, req.app.get('JWT_SECRET'));
+  console.log(req.user);
 	res.json({
 		token: token,
 		expires: expires,
-		user: req.user
+		user: req.user._id
 	});
 
 });
