@@ -5,21 +5,21 @@ var express = require('express'),
   router = express.Router();
 
 var authenticateUser = function(req, res, next) {
-	User.findOne({email: req.body.email}, function(err, user) {
-		if (err) return next(err);
-		if (!user) {
-			res.status(404).send('No user found with that email address');
-		}
-		user.comparePassword(req.body.password, function(err, isMatch) {
-			if (err) return next(err);
-			if (!isMatch) {
-				res.status(403).send('Wrong password');
-			} else {
-				req.user = user;
-				next();
-			}
-		});
-	});
+  User.findOne({email: req.body.email}, function(err, user) {
+    if (err) return next(err);
+    if (!user) {
+      return res.status(404).send('No user found with that email address');
+    }
+    user.comparePassword(req.body.password, function(err, isMatch) {
+      if (err) return next(err);
+      if (!isMatch) {
+        res.status(403).send('Wrong password');
+      } else {
+        req.user = user;
+        next();
+      }
+    });
+  });
 };
 
 router.post('/signup', function(req, res, next) {
@@ -58,17 +58,16 @@ router.post('/signup', function(req, res, next) {
 });
 
 router.post('/login', authenticateUser, function(req, res, next) {
-	var expires = moment().add(7, 'days').valueOf();
-	var token = jwt.encode({
-		iss: req.user._id,
-		exp: expires
-	}, req.app.get('JWT_SECRET'));
-  console.log(req.user);
-	res.json({
-		token: token,
-		expires: expires,
-		user: req.user._id
-	});
+  var expires = moment().add(7, 'days').valueOf();
+  var token = jwt.encode({
+    iss: req.user._id,
+    exp: expires
+  }, req.app.get('JWT_SECRET'));
+  res.json({
+    token: token,
+    expires: expires,
+    user: req.user._id
+  });
 
 });
 
